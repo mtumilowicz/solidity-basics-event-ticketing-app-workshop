@@ -52,7 +52,7 @@ contract EventTicketing {
         emit TicketPurchased(ticketId, msg.sender);
     }
 
-    // getQRCode, get underlying string value, check in db for ticketId, verifyTicket
+    // getQRCode, get underlying ticketId value, verifyTicket
     function verifyTicket(uint256 ticketId) public onlyOrganizer ticketExists(ticketId) {
         require(!tickets[ticketId].isUsed, "Ticket has already been used");
 
