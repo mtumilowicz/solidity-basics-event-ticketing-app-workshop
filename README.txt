@@ -30,6 +30,7 @@
         * usually less than one thousand
         * regular computers execute several billion instructions per second
     * to prevent infinite loops and resource exhaustion, the EVM requires users to pay for computation and storage
+        * Ethereum Virtual Machine is seen only as quasi-Turing complete
         * payment is made in the form of "gas"
             * a unit of measurement for the amount of computational work required to execute operations
         * since the London hard fork, each block has a target size of 15 million units of gas
@@ -87,7 +88,7 @@
         * `PUSH1` opcode is represented as `60` and expects a 1-byte operand
         * bytecode to analyse: `0x6001600201` -> `60 01 60 02 01`
         * byte `60` is the `PUSH1` opcode
-            * adds a byte to the Stack.
+            * adds a byte to the Stack
             * The `PUSH1` opcode is an operator that expects a 1-byte operand
             * Then the complete statement is `60 01`
         * `60 02` // similar
@@ -95,10 +96,105 @@
         * digression
             * byte 01 was used both as an operand and operator
             * it’s easy to figure out what it represents in the context of how it was used
-* is a transaction-based state machine
-    * execution history is stored on the blockchain, making it immutable and transparent
-    * incrementally execute transactions, which morph into some new state
-        * each transaction on a blockchain is a transition of state
+    * you cannot generate the exact original Solidity source code from the EVM bytecode
+        * process of compiling involves
+            * optimizations
+            * transformations
+            * and potentially even loss of information
+                * example
+                    * during complication the function names and their input parameters are hashed to generate the function selectors
+                    * to compute function selector
+                        1. concatenate the function name and parameter types without spaces or commas: `myFunction(uint256,address)``
+                        1. calculate the keccak-256 (sha3) hash of the concatenated string
+                        1. take the first 4 bytes of the hash
+* can be described as a global decentralized state machine
+    * more than a distributed ledger
+        * analogy of a 'distributed ledger' is often used to describe blockchains like Bitcoin
+            * ledger maintains a record of activity which must adhere to a set of rules that govern what someone can and cannot do to modify the ledger
+                * example: Bitcoin address cannot spend more Bitcoin than it has previously received
+                * Ethereum has its own native cryptocurrency (Ether) that follows almost exactly the same intuitive rules
+        * it enables a much more powerful function: smart contracts
+    * state = the current state of all accounts and smart contracts on the blockchain
+        * includes things like account balances, contract storage, and contract code
+    * each transaction on a blockchain is a transition of state
+    * EVM is the engine that processes transactions and executes the corresponding smart contract code
+        * leads to state changes
+        * at any given block in the chain, Ethereum has one and only one 'canonical' state
+            * EVM is what defines the rules for computing a new valid state from block to block
+* memory model maintains four locations to access and/or store information
+    1. storage
+        * permanent storage space
+        * each contract account has its own storage and can only access their own storage
+            * it is not possible to directly access the storage of another account
+            * each Ethereum account has its own unique address and associated storage
+                * this address is derived from the account's public key
+                * as a result, only the account owner has the private key necessary to access or modify the storage
+            * think of storage as a private database
+        * thinking of the storage as an array will help us understand it better
+            * each space in this storage "array" is called a slot and holds `32` bytes of data (`256 bits`)
+            * maximum length of this storage "array" is `2²⁵⁶-1`
+            * each slot can be occupied by more than one type
+                * unless sum of bytes are <= 32
+                * so order matters
+            * example
+                ```
+                // SPDX-License-Identifier: MIT
+                pragma solidity ^0.8.16;
+
+                contract StorageLayout {
+                    uint64 public value1 = 1;
+                    uint64 public value2 = 2;
+                    uint64 public value3 = 3; // order matters: you will need 3 slots if value3 and value5 are swapped
+                    uint64 public value4 = 4;
+                    uint256 public value5 = 5;
+                }
+                ```
+                and we can get storage at specific slot
+                ```
+                web3.eth.getStorageAt("0x9168fBa74ADA0EB1DA81b8E9AeB88b083b42eBB4", 0)
+                // returns: `0x04000000000000000300000000000000020000000000000001`
+                // so we have value1, ..., value4 in one slot
+                web3.eth.getStorageAt("0x9168fBa74ADA0EB1DA81b8E9AeB88b083b42eBB4", 1)
+                // returns: `0x0000000000000000000000000000000000000000000000000000000000000005`
+                ```
+
+        * it is not cheap in terms of gas - so we need to optimize the use of storage
+            ```
+            contract storageExample {
+            uint256 sumOfArray;
+
+                function inefficientSum(uint256 [] memory _array) public {
+                        for(uint256 i; i < _array.length; i++) {
+                            sumOfArray += _array[i]; // writing directly to storage
+                        }
+                }
+
+                function efficientSum(uint256 [] memory _array) public {
+                   uint256 tempVar;
+
+                   for(uint256 i; i < _array.length; i++) {
+                            tempVar += _array[i]; // using temporary memory variable
+                        }
+                   sumOfArray = tempVar;
+                }
+            }
+            ```
+        * not assigning a value to a state variable = assigning its default value based on the type
+            * example
+                * `address` -> `0x0000000000000000000000000000000000000000`
+                * enums -> assigned the first value (index 0)
+    1. memory
+        * works similarly to the memory of a computer, more specifically, the RAM (Random Access Memory)
+            * idea of RAM is that information can be read and stored in specific places
+            (at a particular memory address) and not just sequentially
+    1. stack
+        * works on the LIFO (Last-In First-Out) scheme
+        * when the bytecode starts executing, the Stack is empty
+    1. calldata
+        * it is a read-only location
+        * in principle, the calldata can be anything
+        * where call or transaction payload information is stored
+            * call payload is usually the signature of the function to be executed, followed by the ABI encoding of the function arguments
 
 ## smart contract
 * program (bytecode) deployed and executed in the Ethereum Virtual Machine (EVM)
@@ -142,3 +238,38 @@
             * its goal is to efficiently distribute advertising money between advertisers, publishers, and
             readers of online marketing content and ads
     * can operate autonomously without the need for intermediaries
+
+
+
+
+
+
+
+
+
+
+# to use
+* Dynamic types are not that straightforward, because they can increase and decrease the amount of data they hold dynamically.
+    * So they cannot be stored sequentially, as the value types can.
+    * For an array, in the slot it is declared only its length is saved, and its elements are stored somewhere else in the storage
+    * example
+        ```
+        uint256[] public values = [1,2,3,4,5,6,7,8];
+
+        bytes32 constant public startingIndexOfValuesArrayElementsInStorage = keccak256(abi.encode(0));
+
+        function getElementIndexInStorage(uint256 _elementIndex) public pure returns(bytes32) {
+            return bytes32(uint256(startingIndexOfValuesArrayElementsInStorage) + _elementIndex);
+        }
+        ```
+        * Encoding the index with abi.encode will left-padded with zeros automatically for us.
+        * keccak256(0x0000000000000000000000000000000000000000000000000000000000000000)
+            * 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563
+        * If we sum 1 to the index 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563
+            * web3.eth.getStorageAt("0x080188CFeF3D9A59B80dE6C79F8f35C6843aa41D", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e564")
+            0x0000000000000000000000000000000000000000000000000000000000000002
+    * These indices are huge and look random since they are calculated withkeccak256 , which will return a 256 bit number, represented as hexadecimal, and we use that hash as the index of the elements of our array.
+        * Remember that the storage capacity is 2²⁵⁶-1 elements, so we are good and in range using keccak256 hash as slot index.
+        * This makes the probability of 2 or more different state variables sharing the same slot in storage low.
+        * Since array elements are stored sequentially from the hash, the same space layout applies to them.
+            * If our array was uint8[], then many elements of the array would fit in a single slot until 32 bytes are occupied.
