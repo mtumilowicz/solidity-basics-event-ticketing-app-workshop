@@ -4,6 +4,10 @@
     * https://www.investopedia.com/terms/b/basic-attention-token.asp
     * https://ethereum.stackexchange.com/questions/872/what-is-the-cost-to-store-1kb-10kb-100kb-worth-of-data-into-the-ethereum-block
     * https://medium.com/@danielyamagata/understand-evm-opcodes-write-better-smart-contracts-e64f017b619
+    * https://ethereum.stackexchange.com/questions/594/how-do-gas-refunds-work
+    * https://ethereum.stackexchange.com/questions/92965/how-are-gas-refunds-payed
+    * https://ethereum.stackexchange.com/questions/125028/is-there-still-gas-refund-for-sstore-to-0-instructions
+    * https://ethereum.stackexchange.com/questions/3/what-is-meant-by-the-term-gas
 
 # introduction
 ## EVM = Ethereum Virtual Machine
@@ -179,7 +183,8 @@
                 }
             }
             ```
-        * not assigning a value to a state variable = assigning its default value based on the type
+        * Solidity does not have null values
+            * not assigning a value to a state variable = assigning its default value based on the type
             * example
                 * `address` -> `0x0000000000000000000000000000000000000000`
                 * enums -> assigned the first value (index 0)
@@ -195,6 +200,143 @@
         * in principle, the calldata can be anything
         * where call or transaction payload information is stored
             * call payload is usually the signature of the function to be executed, followed by the ABI encoding of the function arguments
+
+## gas
+* is a measure of computational work required to execute operations or transactions on the network
+    * opcodes have a base gas cost used to pay for executing the transaction
+        * example: KECCAK256
+            * cost: 30 + 6 for every 256 bits of data being hashed
+    * there isn't any actual token for gas
+        * example: you can't own 1000 gas
+        * exists only inside of the Ethereum virtual machine as a count of how much work is being performed
+* is the fee paid for executing transactions on the Ethereum blockchain
+    * example
+        * simple transaction of moving ETH between two addresses
+        * we know that this transaction requires 21,000 units
+        * base fee for standard speed at the moment of writing is 20 gwei
+        * gas fee = gas units (limit) * gas price per unit (in gwei)
+        * 21,000 * 20 = 420,000 gwei
+        * 420,000 gwei is 0.00042 ETH, which is at the current prices 0.63 USD (1 ETH = $1500)
+* gas prices change constantly and there are a number of websites where you can check the current price
+    * https://etherscan.io/gastracker
+* if Ether (ETH) was directly used as the unit of transaction cost instead of gas, it would lead to several potential problems:
+    * reduced flexibility
+        * gas allows for adjustments to the cost of computation without affecting the underlying value of Ether
+        * if Ether were used directly
+            * any change in pricing would directly impact the value of the cryptocurrency
+            * it would be difficult to prevent attackers from flooding the network with low-cost transactions
+            * cost of computation should not go up or down just because the price of ether changes
+                * it's helpful to separate out the price of computation from the price of the ether token
+    * difficulty in predictability
+        * Ether's value can be volatile, which means that transaction costs would fluctuate with the market price
+        * this could lead to unpredictable costs for users and could make it more challenging to budget for transactions
+* is used to
+    * prevent infinite loops
+    * computational resource exhaustion
+    * prioritize transactions on the network
+    * prevent Sybil attacks
+        * by discouraging the creation of a large number of malicious identities
+        * solution: prevents an attacker from overwhelming the network with a massive number of transactions
+            * as each transaction costs some amount of gas
+    * solve halting problem
+        * problem = it's generally impossible to determine whether that program will eventually halt or continue running indefinitely
+        * solution: program will eventually run out of gas and the transaction will be reverted
+* gas has a price, denominated in ether (ETH)
+    * users set the gas price they are willing to pay to have their transaction or smart contract executed
+    * miners prioritize transactions with higher gas prices because they earn the fees associated with the gas
+    * analogy
+        * gas price as the hourly wage for the miner
+        * gas cost as their timesheet of work performed
+* every operation consumes a certain amount of gas
+    * is paid by users to compensate miners for the computational work they perform
+    * total gas fee = gas used * gas price
+* each block has a gas limit
+    * maximum amount of gas that can be consumed in a block
+    * transaction sender is refunded the difference between the max fee and the sum of the base fee and tip
+* some operations can result in a gas refund
+    * example: if a smart contract deletes a storage slot, it gets a gas refund
+        * digression
+            * London Upgrade through EIP-3529: remove gas refunds for `SELFDESTRUCT`, and reduce gas refunds for `SSTORE` to a lower level
+    * refund is only applied at the end of the transaction
+        * the full gas must be made available in order to execute the full transaction
+* it's important to estimate the gas needed for a transaction or smart contract execution
+    * if too small => the operation will be reverted and any state changes will be discarded
+        * miner still includes it in the blockchain as a "failed transaction", collecting the fees for it
+            * sender still pays for the gas consumed up to that point
+            * the real work for the miner was in performing the computation
+                * they will never get those resources back either
+                * it's only fair that you pay them for the work they did, even though your badly designed transaction ran out of gas
+    * if too big => the excess gas is refunded (refund = max fee - base fee + tip)
+        * max fee (maxFeePerGas)
+            * maximum limit to pay for their transaction to be executed
+            * must exceed the sum of the base fee and the tip
+        * providing too big of a fee is also different than providing too much ether
+            * if you set a very high gas price, you will end up paying lots of ether for only a few operations
+                * similar to super high transaction fee in bitcoin
+            * if you provided a normal gas price, however, and just attached more ether than was needed to pay for the gas that your transaction consumed
+                * excess amount will be refunded back to you
+                * miners only charge you for the work that they actually do
+* EIP-1559
+    * implemented in the London Hard Fork upgrade
+    * went live in August 2021
+    * introduces a new fee structure that separates transaction fees
+        * NOT designed to lower gas fees but to make them more transparent and predictable
+        * two components
+            * base fee
+                * minimum fee required to include a transaction in a block
+                * determined by network congestion
+                    * example
+                        * when the network is busy, the base fee increases
+                        * when it's less congested, the base fee decreases
+                    * increase/decrease is predictable and will be the same for all users
+                    * removing the need for each and every wallets to generate their own individual gas estimation strategies
+                * is burned
+                    * removed from circulation
+                    * reducing the overall supply of Ether
+                    * miners have less control over manipulating transaction fees
+                        * no reason into bumping base price by putting load on the network
+                    * benefits all Ether holders equally, rather than exclusively benefiting validators
+                        * creates what EIP-1559 coordinator Tim Beiko refers to as an “ETH buyback” mechanism
+                        * ETH is paid back to the protocol and the supply gets reduced
+            * priority fee
+                * optional tip to incentivize miners to include their transaction in the next block
+                * goes directly to the miner
+    * similar to a delivery service
+        * lower fee for regular delivery or a higher fee for express delivery
+        * during busy times, like the holiday season, the delivery service may increase the standard delivery fee
+            * increase will be set by the delivery company and will affect all customers equally
+    * comparable to Bitcoin’s difficulty adjustment
+    * network capacity would be increased to 16 million gas, so that 50% utilization matches up with our current 8 million gas limit
+        * when the network is at >50% capacity, the BASEFEE increments up slightly and when capacity is at <50%, it decrements down slightly
+        * increments are constrained, the maximum difference in BASEFEE from block to block is predictable
+    * oracles might run into issues under EIP-1559 during periods of high congestion
+        * they need to provide the pricing information for nearly all of DeFi
+        * might end up paying incredibly high fees in order to ensure the pricing information reaches the DeFi application in a timely manner
+    * context: original Ethereum gas fee system
+        * simple auction system: unpredictable and inefficient
+            * users bid a random amount of money to pay for each transaction
+                * we can see a large divergence of transaction fees paid by different users in a single block
+                    * many users often overpay by more than 5x
+                    * example
+                        ![alt text](img/pre_eip1559_overpay.png)
+            * when the network becomes busy, this system causes gas fees to become high and unpredictable
+            * not easy to quick-fix
+                * possible improvement: users submit bids as normal, then everyone pays only the lowest bid that was included in the block
+                    * can be easily gamed by miners who will fill up their own blocks in order to increase the minimum fee
+                    * gameable by transaction senders who collude with miners
+        * similar to the way ride-sharing services calculate ride fees
+            * when demand for rides is higher, prices go up for everyone who wants a ride
+        * problem: Ethereum network becomes busy
+            * example
+                * many users are trying to play a hit game
+                * trade on a new decentralized cryptocurrency exchange
+            * result: users trying to push their transactions by paying absurdly high gas fees
+                * gas fees become unpredictable
+                * users must guess how much to pay for a transaction
+        * as Ethereum has gained new users, the network has become more congested
+            * gas fees have become more volatile
+            * many users have inadvertently overpaid for their transactions
+
 
 ## smart contract
 * program (bytecode) deployed and executed in the Ethereum Virtual Machine (EVM)
