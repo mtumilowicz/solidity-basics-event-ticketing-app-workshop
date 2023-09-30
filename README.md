@@ -51,7 +51,7 @@
         * `verifyTicket(ticketId)`
             * assume that ticketId is derived from `qrCode` by other system 
         * `getQRCode(ticketId)`
-    * implement tests
+    * implement tests in solidity
 
 ## memory model
 1. storage
