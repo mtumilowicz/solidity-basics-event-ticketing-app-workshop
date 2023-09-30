@@ -5,6 +5,7 @@
     * https://medium.com/@danielyamagata/understand-evm-opcodes-write-better-smart-contracts-e64f017b619
     * https://ethereum.stackexchange.com/questions/117100/why-do-many-solidity-projects-prefer-importing-specific-names-over-whole-modules
     * https://medium.com/@eiki1212/what-is-ethereum-gas-simple-explanation-2f0ae62ed69c
+    * https://ethereum.stackexchange.com/questions/38387/contract-address-transfer-method-gas-cost
 
 ## memory model
 1. storage
@@ -209,36 +210,214 @@
     * executed once while deploying the contract
     * can have a payable attribute
         * enable it to accept Ether during deployment and contract instance creation time
+    * can be defined as internal
+        * contract cannot be deployed
 * two ways of creating a contract
-      * using the new keyword
-          * deploys and creates a new contract instance
-          * example: `HelloWorld myObj = new HelloWorld();`
-      * using the address of the already-deployed contract
-          * is used when a contract is already deployed and instantiated
-          * example: `HelloWorld myObj = HelloWorld(address);`
+    * using the new keyword
+        * deploys and creates a new contract instance
+            * when we deploy the contract, we simply deploy compiled hexadecimals under the data field
+                * example
+                    ```
+                    pragma solidity ^0.8.21;
 
-# to use
-* Dynamic types are not that straightforward, because they can increase and decrease the amount of data they hold dynamically.
-    * So they cannot be stored sequentially, as the value types can.
-    * For an array, in the slot it is declared only its length is saved, and its elements are stored somewhere else in the storage
-    * example
-        ```
-        uint256[] public values = [1,2,3,4,5,6,7,8];
+                    contract MyContract {
 
-        bytes32 constant public startingIndexOfValuesArrayElementsInStorage = keccak256(abi.encode(0));
+                    }
+                    ```
+                    is compiled to
+                    ```
+                    0x6080604052348015600e575f80fd5b50603e80601a5f395ff3fe60806040525f80fdfea2646970667358221220e48937f3cf7fd35ec1550eb34b94a85d69119e8fe5c9a996d43a65140f5ce75964736f6c63430008150033
+                    ```
+        * example: `HelloWorld myObj = new HelloWorld();`
+    * using the address of the already-deployed contract
+        * is used when a contract is already deployed and instantiated
+        * example: `HelloWorld myObj = HelloWorld(address);`
+* inheritance
+    * C3 linearization / Method Resolution Order (MRO) (similar to Python)
+        * force a specific order in graphs of base contracts
+    * contract becomes an abstract contract when it consists of functions without any implementation
+        * you cannot create an instance of an abstract contract.
+    * interfaces cannot contain any definitions and any state variables
+        * only the signature of functions
+* types
+    * bool
+    * uint/int8...256
+        * example: uint8 - unsigned integer with 8 bits (ranging from 0 to 255)
+        * uint/int - alias for uint256/int256
+        * signed integers - hold both negative and positive values
+        * unsigned integers - hold positive values along with zero
+    * arrays
+        * fixed arrays
+            ```
+            int[5] age = [int(10), 20, 30, 40, 50];
 
-        function getElementIndexInStorage(uint256 _elementIndex) public pure returns(bytes32) {
-            return bytes32(uint256(startingIndexOfValuesArrayElementsInStorage) + _elementIndex);
-        }
-        ```
-        * Encoding the index with abi.encode will left-padded with zeros automatically for us.
-        * keccak256(0x0000000000000000000000000000000000000000000000000000000000000000)
-            * 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563
-        * If we sum 1 to the index 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563
-            * web3.eth.getStorageAt("0x080188CFeF3D9A59B80dE6C79F8f35C6843aa41D", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e564")
-            0x0000000000000000000000000000000000000000000000000000000000000002
-    * These indices are huge and look random since they are calculated withkeccak256 , which will return a 256 bit number, represented as hexadecimal, and we use that hash as the index of the elements of our array.
-        * Remember that the storage capacity is 2²⁵⁶-1 elements, so we are good and in range using keccak256 hash as slot index.
-        * This makes the probability of 2 or more different state variables sharing the same slot in storage low.
-        * Since array elements are stored sequentially from the hash, the same space layout applies to them.
-            * If our array was uint8[], then many elements of the array would fit in a single slot until 32 bytes are occupied.
+            age[0]; // retrieve
+            ```
+            * slot storage
+                * stored contiguously
+        * dynamic arrays
+            ```
+            int[] age = [int(10), 20, 30, 40, 50];
+            int[] age = new int[](5);
+
+            age.push(60); // add
+            age.pop(); // remove
+            age[0]; // retrieve
+            ```
+            * slot storage
+                * in the slot: only its length is saved
+                    * its elements stored somewhere else in the storage
+                * example
+                    ```
+                    uint256[] public values = [1,2,3,4,5,6,7,8];
+                    uint constant slot = 0
+                    uint constant startingIndexOfValues = keccak256(abi.encode(slot))
+
+                    function getElementIndexInStorage(uint256 _elementIndex) public pure returns(bytes32) {
+                        return bytes32(uint256(startingIndexOfValues) + _elementIndex);
+                    }
+                    ```
+                * elements are stored sequentially from the hash
+                    * space layout applies to them
+                    * example: many elements of `uint8[]` would fit in a single slot until 32 bytes are occupied
+                * indices are huge and look random
+                    * keccak256 returns a 256 bit number
+                    * storage capacity is 2²⁵⁶-1 elements
+                        * we are good and in range using keccak256 hash as slot index
+                    * makes the probability of 2 or more different state variables sharing the same slot in storage low
+    * bytes
+        * bytes1 to bytes32 inclusive
+        * fixed-size byte array
+        * example
+            ```
+            function test() public pure returns (bytes1) {
+                bytes2 arr = 0x1234;
+                bytes1 first = arr[0]; // 0x12
+                bytes1 second = arr[0]; // 0x34
+                return first;
+            }
+            ```
+    * String
+        * do not provide string manipulation methods
+            * no access by indexed
+            * no push
+            * no length property
+            * to perform any of these - convert into bytes
+                ```
+                bytes byteName = bytes(name);
+                ```
+            * no equals
+                ```
+                Keccak256(''hello world'') == keccak256(''hello world'') // check for equality
+                ```
+        * slot storage
+            * same as fixed arrays
+    * Bytes
+        * similar to dynamic arrays
+    * address
+        * one of the most used data types in smart contracts
+        * provides three functions
+            * call
+            * delegatecall
+            * callcode
+            * described here: https://github.com/mtumilowicz/solidity-upgradable-contract-proxy-workshop
+        * single property: balance
+        * designed to hold account addresses in Ethereum
+            * 160 bits or 20 bytes in size
+        * differentiate between contract address and externally owned accounts
+            * using assembly
+                ```
+                function isContract(address addr) internal view returns (bool) {
+                    uint size;
+                    assembly {
+                        size := extcodesize(addr)
+                    }
+                    return size > 0;
+                }
+                ```
+            * using global variables
+                ```
+                function checkAddressType() public view returns (string memory) {
+                    if (msg.sender == tx.origin) {
+                        return "Externally Owned Account (EOA)";
+                    } else {
+                        return "Contract Address";
+                    }
+                }
+                ```
+        * cannot be used to send or receive Ethers
+            * can be converted to `payable address`
+                ```
+                address addr1 = msg.sender;
+                address payable addr3 = payable(addr1);
+                ```
+        * payable
+            * superset of the address type
+                * idea behind this distinction: you are not supposed to send Ether to a plain address
+                    * example: it might be a smart contract that was not built to accept Ether
+            * additional capability of receiving as well as sending Ether to other accounts
+            * additional methods used to send ether to a contract or an externally owned account
+                * transfer/send()
+                    * provides 2,300 units of gas as a fixed limit (cannot be superseded)
+                        * currently only enough to log an event
+                    * low-level functions and should be used with caution
+                        * if used with the contract address, it will invoke a fallback or receive function on the contract
+                            * may recursively call back within the calling contract again and again (reentrancy attack)
+                    * `send()` function returns Boolean
+                    * `transfer()` raises an exception in the case of execution failure
+                        * all changes are reverted
+                        * better alternative to `send()`
+    * mapping
+        * similar to hash tables or dictionaries in other languages
+        * example
+            ```
+            mapping(address => uint256) public balances;
+
+            function setBalance(address _address, uint256 _balance) public {
+                balances[_address] = _balance;
+            }
+
+            function getBalance(address _address) public view returns (uint256) {
+                return balances[_address];
+            }
+            ```
+        * only as a storage type
+            * not stored sequentially as arrays
+                * there is no way to order them to save space by fitting smaller types into a single slot
+            * slot where the mapping is declared does not contain any information
+                * just empty bytes
+            * example
+                ```
+                mapping(address => uint256) public balances;
+                ```
+                and we need to know storage index of the `0x6827b8f6cc60497d9bf5210d602C0EcaFDF7C405`
+                1. left pad the address to 32 bytes
+                1. left pad the mapping index
+                    * our mapping is declared at index 0 of the storage
+                1. concatenate them and calculate the keccak256 hash for it
+        * Solidity does not allow iteration through mapping
+            * `OpenZeppelin` provides `EnumerableMap` that allows you to create an iterable mapping in Solidity
+        * possible to have nested mapping
+    * enum
+        * example
+            ```
+            enum Status { Inactive, Active, Paused }
+
+            function getStatus() public pure returns (Status) {
+                return Status.Active;
+            }
+            ```
+        * values are not directly visible outside the contract
+            * each enum value is assigned a unique consecutive integer value starting from 0
+            * if you externally call `getStatus()` you will get int: `1`
+    * struct
+        * help implement custom user-defined data types
+        * do not contain any logic within them
+        * slot storage
+            * slot index where it is declared is reserved for the first value it has
+                * and then sequentially
+                * example
+                    ```
+                    Person public p = Person(1, "Jeremy", 28, true);
+                    ```
+                    * id - slot index 0, name - slot index 1 and so on
