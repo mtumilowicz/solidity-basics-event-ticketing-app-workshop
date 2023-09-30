@@ -37,11 +37,11 @@
     * https://medium.com/coinmonks/learn-solidity-lesson-26-error-handling-ccf350bc9374
     * https://ethereum.stackexchange.com/questions/131384/is-msg-sender-reliable-in-view-and-pure-functions
 
-# preface
+## preface
 * goals of this workshop
     * understanding memory model of emv
-    *
-    * introduction to Solidity programming
+    * introduction to smart contract
+    * basics of Solidity programming
 
 ## memory model
 1. storage
