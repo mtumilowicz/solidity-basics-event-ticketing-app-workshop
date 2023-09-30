@@ -32,7 +32,7 @@ contract EventTicketing {
         _;
     }
 
-    function createTicket(string memory _qrCode) public onlyOrganizer returns (uint256) {
+    function createTicket(string calldata _qrCode) public onlyOrganizer returns (uint256) {
         ticketCount++;
         tickets[ticketCount] = Ticket({
             purchased: false,
