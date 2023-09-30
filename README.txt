@@ -1,11 +1,47 @@
 # solidity-basics-event-ticketing-app-workshop
 
 * references
+    * https://www.oreilly.com/library/view/hands-on-smart-contract/9781492045250/
+    * https://www.amazon.com/Solidity-Programming-Essentials-building-contracts/dp/1803231181
+    * https://www.amazon.com/Beginning-Ethereum-Smart-Contracts-Programming/dp/1484292707
+    * https://www.springerprofessional.de/en/ethereum-smart-contract-development-in-solidity/18334966
+    * https://www.manning.com/books/blockchain-in-action
+    * https://www.packtpub.com/product/mastering-blockchain-programming-with-solidity/9781839218262
+    * https://www.algoexpert.io/blockchain/index
+    * https://chat.openai.com
     * https://www.investopedia.com/terms/b/basic-attention-token.asp
     * https://medium.com/@danielyamagata/understand-evm-opcodes-write-better-smart-contracts-e64f017b619
     * https://ethereum.stackexchange.com/questions/117100/why-do-many-solidity-projects-prefer-importing-specific-names-over-whole-modules
     * https://medium.com/@eiki1212/what-is-ethereum-gas-simple-explanation-2f0ae62ed69c
     * https://ethereum.stackexchange.com/questions/38387/contract-address-transfer-method-gas-cost
+    * https://medium.com/@natelapinski/the-difference-between-tx-origin-60737d3b3ab5
+    * https://ethereum.stackexchange.com/questions/21448/how-to-get-a-contracts-balance-in-solidity
+    * https://medium.com/@blockchain101/solidity-bytecode-and-opcode-basics-672e9b1a88c2
+    * https://medium.com/coinmonks/solidity-storage-vs-memory-vs-calldata-8c7e8c38bce
+    * https://ethereum.stackexchange.com/questions/123169/can-calldata-be-used-in-every-function-visibility#:~:text=calldata%20can%20typically%20only%20be,call%20it%20with%20calldata%20arguments.
+    * https://ethereum.stackexchange.com/questions/74442/when-should-i-use-calldata-and-when-should-i-use-memory
+    * https://ethereum.stackexchange.com/questions/117770/how-to-use-calldata-return-values-in-solidity-and-when-are-they-useful
+    * https://ethereum.stackexchange.com/questions/64108/whats-the-difference-between-address-and-address-payable
+    * https://docs.soliditylang.org/
+    * https://medium.com/soonami/3-secure-alternative-methods-to-replace-tx-origin-for-solidity-developers-4acc2c49e1c
+    * https://ethereum.stackexchange.com/questions/82240/what-is-the-immutable-keyword-in-solidity
+    * https://coinsbench.com/solidity-layout-and-access-of-storage-variables-simply-explained-1ce964d7c738
+    * https://consensys.github.io/smart-contract-best-practices/development-recommendations/solidity-specific/assert-require-revert
+    * https://stackoverflow.com/questions/71502322/difference-between-assert-and-require
+    * https://stackoverflow.com/questions/70216805/why-assertion-is-used-on-this-smart-contract
+    * https://ethereum.stackexchange.com/questions/15166/difference-between-require-and-assert-and-the-difference-between-revert-and-thro
+    * https://medium.com/coinmonks/error-handling-in-solidity-pt-4-ce2fef14ceb2
+    * https://medium.com/@solidity101/writing-robust-smart-contracts-with-require-assert-and-revert-in-solidity-a997f6c9b13f
+    * https://medium.com/coinmonks/solidity-fundamentals-a95bb6c8ba2a
+    * https://thekscar.medium.com/writing-solidity-unit-tests-for-testing-assert-require-and-revert-conditions-using-truffle-2e182d91a40f
+    * https://medium.com/coinmonks/learn-solidity-lesson-26-error-handling-ccf350bc9374
+    * https://ethereum.stackexchange.com/questions/131384/is-msg-sender-reliable-in-view-and-pure-functions
+
+# preface
+* goals of this workshop
+    * understanding memory model of emv
+    *
+    * introduction to Solidity programming
 
 ## memory model
 1. storage
@@ -73,7 +109,6 @@
         * example
             * `address` -> `0x0000000000000000000000000000000000000000`
             * enums -> assigned the first value (index 0)
-    * Solidity generates a getter function for public state variables
 1. memory
     * works similarly to the memory of a computer, more specifically, the RAM (Random Access Memory)
         * idea of RAM is that information can be read and stored in specific places
@@ -232,6 +267,12 @@
     * using the address of the already-deployed contract
         * is used when a contract is already deployed and instantiated
         * example: `HelloWorld myObj = HelloWorld(address);`
+* this
+    * represents the current contract
+    * use case: get balance of current contract
+        ```
+        address(this).balance
+        ```
 * inheritance
     * C3 linearization / Method Resolution Order (MRO) (similar to Python)
         * force a specific order in graphs of base contracts
@@ -324,27 +365,6 @@
         * single property: balance
         * designed to hold account addresses in Ethereum
             * 160 bits or 20 bytes in size
-        * differentiate between contract address and externally owned accounts
-            * using assembly
-                ```
-                function isContract(address addr) internal view returns (bool) {
-                    uint size;
-                    assembly {
-                        size := extcodesize(addr)
-                    }
-                    return size > 0;
-                }
-                ```
-            * using global variables
-                ```
-                function checkAddressType() public view returns (string memory) {
-                    if (msg.sender == tx.origin) {
-                        return "Externally Owned Account (EOA)";
-                    } else {
-                        return "Contract Address";
-                    }
-                }
-                ```
         * cannot be used to send or receive Ethers
             * can be converted to `payable address`
                 ```
@@ -421,3 +441,222 @@
                     Person public p = Person(1, "Jeremy", 28, true);
                     ```
                     * id - slot index 0, name - slot index 1 and so on
+* global variables
+    * information about the current transaction and blocks
+    * `msg`
+        * `msg.value`
+            * amount of Ether (in wei) sent with the current transaction
+        * `msg.gas`
+            * amount of gas remaining in the current transaction
+        * `msg.data`
+            * contains the complete calldata
+            * data payload of the transaction
+            * contains the function selector and any input data provided when a function is called
+                * when contract is deployed, constructor selector is used
+        * `msg.sig`
+            * first four bytes of the `msg.data` (function selector)
+                * all of the public and external functions have special members available, called selector
+                    * returns the first 4 bytes of the function signature as bytes4
+                    * example
+                        ```
+                        function add(uint256 a, uint256 b) public pure returns (uint256);
+
+                        bytes4 functionSelector = bytes4(keccak256("add(uint256,uint256)"));
+
+                        bytes4 functionSelector = this.add.selector;
+                        ```
+            * helps to optimize gas usage by directly specifying the function to be executed
+                * rather than parsing `msg.data` manually
+        * `msg.sender`
+            * represents the address that is currently calling or interacting with the smart contract
+    * `tx.origin`
+        * address of the original sender of the transaction
+            * EOA that initiated the transaction
+            * EOAs are the only things in Ethereum that could create a transaction
+                * can change with ERC-4337 (account abstraction), whereby certain smart contracts will have the
+                ability to issue transactions on behalf of a user
+        * `msg.sender` is not always equal to `tx.origin`
+            * smart contract can call other smart contracts as part of the same transaction
+            * each time a contract calls another contract, the value of `msg.sender` is updated
+    * `block.timestamp`
+        * timestamp of the current block as a Unix timestamp
+* cryptographic functions for hashing values
+    * SHA2 (sha256)
+    * SHA3 (sha3 or keccak256 function)
+        * recommended to use the keccak256 function for hashing needs
+            * is specified in the Ethereum Yellow Paper
+            * using sha256 could potentially lead to confusion and compatibility issues
+* qualifiers
+    * state variables
+        * internal
+            * default
+            * can only be used within current contract functions and any contract that inherits from it
+            * cannot be directly accessed by external contracts or external actors, its value is still
+            stored on the blockchain and can be observed by inspecting the blockchain's state
+        * private
+            * can only be used in contracts containing them
+            * cannot be directly accessed by external contracts or external actors, its value is still
+            stored on the blockchain and can be observed by inspecting the blockchain's state
+        * public
+            * enables external access to state variables
+            * Solidity compiler generates a getter function for each public state variable
+            * cannot be directly modified from an externally owned account (EOA) - you need a setter method
+        * constant
+            * makes state variables immutable
+            * the compiler will replace references of this variable everywhere in code with the assigned value
+            * does not occupy storage on the blockchain
+        * immutable
+            * can only be assigned once
+            * read-only, but assignable in the constructor
+            * less restricted than those declared as constant
+    * functions
+        * internal - same as for state
+        * public - same as for state
+        * private - same as for state
+        * external
+            * can only be invoked by other contracts or externally owned accounts (EOAs)
+            * become part of the contract's interface
+            * helps to enforce security and transparency in your contract design
+        * additional qualifiers
+            * view
+                * not modify the state of the contract
+                    * state changing actions
+                        * writing to state variables
+                        * emitting events
+                        * creating other contracts
+                        * using selfdestruct
+                        * sending ether via send and transfer
+                        * calling any function not marked view or pure
+                        * using low-level calls
+                        * using inline assembly that contains certain opcodes
+                * read-only
+                * view functions are accessible both off-chain and on-chain
+                    * on-chain
+                        * consumes gas
+                        * example: if function that changes the contract state calls a view function
+                    * off-chain
+                        * doesn't consume any gas
+            * pure
+                * more restrictive than `view`
+                    * cannot access state variables
+            * no way to fully trust `msg.sender` in a view or pure function
+                * signatures are not verified in simple calls
+                * one way to fully assure yourself of who is calling a function: to have the caller sign and message
+                and then use `ecrecover` to derive address from signature
+            * payable
+                * function can accept Ether only if marked as payable
+* modifiers
+    * is always associated with a function
+    * refers to a construct that changes the behavior of code under execution
+    * it has the power to change the behavior of functions that it is associated with
+    * is similar to the decorator pattern in object-oriented programming
+    * example
+        ```
+        modifier onlyOwner() {
+            require(msg.sender == owner, "Only the owner can call this function");
+            _; // This is a placeholder for the actual function code
+        }
+
+        function setData(uint256 _value) public onlyOwner {
+            data = _value;
+        }
+        ```
+* events
+    * transactions can generate events
+    * used to notify external systems about specific state changes
+        * example
+            ```
+            event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+
+            function transferNFT(address from, address to, uint256 tokenId) external {
+                require(_isApprovedOrOwner(msg.sender, tokenId), "Not authorized");
+                _safeTransfer(from, to, tokenId, "");
+
+                emit Transfer(from, to, tokenId);
+            }
+            ```
+    * stored along with block data
+    * up to four indexed parameters (topics)
+        * used to filter events when querying the blockchain
+        * stored in a special data structure called the "logs bloom"
+            * compact representation of all events emitted in a block
+            * allows nodes to quickly check if a log is included in a block, without having to go through the full log data
+        * first topic is used to log the signature of the event
+            * the first four bytes of the keccak256 hash of the event's signature
+* error handling
+    * supports try-catch
+    * possibility to define error objects
+        * example
+            ```
+            error InsufficientBalance(uint available, uint required);
+            ```
+        * cannot be used in conjunction with the require function
+            * must be used in conjunction with the revert function
+    * revert
+        * example
+            ```
+            if (balanceOf[msg.sender] <= 100) {
+                revert InsufficientBalance(balanceOf[msg.sender], 100);
+            }
+            ```
+        * use case
+            * if it is hard to use `require`
+                * example: complex ifs structures
+    * require
+        * using `if (!condition) revert(...)` and `require(condition, ...)` have the same effect
+        * example
+            ```
+            require(msg.value >= price, "Insufficient Ether sent");
+            ```
+        * accepts two arguments
+            * condition that either evaluates to true or false
+            * optional error message
+                * string value that is returned to the caller as part of the exception reason
+                * returns an exception of the Error(string)
+        * if the evaluation of the statement is false then
+            * compiles to `0xfd` which is the `REVERT` opcode
+            * an exception is raised and execution is halted
+            * unused gas is returned to the caller
+                * does not return already-consumed gas
+                * should be used at the beginning of the function
+            * state change is reversed
+                * even if storage variables is made prior to the require statement (within a function)
+        * use cases - validations
+            * inputs
+            * return values
+            * calls to external contracts
+            * condition before state update
+        * correspond to function preconditions in other programming languages
+    * assert
+        * used to check for conditions that should never be false
+        * can't provide a message error
+        * use case
+            * test for internal errors
+                * example: checking the balance of an account after an operation
+            * check invariants
+                * example: the token to ether issuance ratio, in a token issuance contract, may be fixed
+                    * verify that this is the case at all times
+            * when you think that a current state has the potential to become inconsistent
+                * example: OpenZeppelin’s
+                    * SafeMath.add() function asserts that any summed integers do not overflow
+            * documenting your assumptions with assertions
+            * commonly employed during the development and testing stages to catch and identify bugs
+        * if the evaluation of the statement is false then
+            * compiles to `0xfd` which is the `REVERT` opcode
+                * uses revert with error signature Panic(uint256)
+                * till version 0.8.0
+                    * assert(false) compiled to `0xfe` - invalid opcode
+                        * using up all remaining gas
+                        * reverting all changes
+                * digression
+                    * non-critical errors revert either with empty error data or Error(string)
+                        * example: division by zero, failing assertions, array access out of bounds
+                    * critical errors revert with Panic(uint256)
+        * should often be combined with other techniques, such as pausing the contract and allowing upgrades
+            * otherwise, you may end up stuck, with an assertion that is always failing
+        * way to provide a target for formal verification
+            * example: tools such as the SMTChecker can detect bugs by trying to prove various statements about your code
+                * based on SMT (Satisfiability Modulo Theories) and Horn solving
+                * it considers require statements as assumptions and tries to prove that the conditions inside assert statements are always true
+                * if an assertion failure is found, a counterexample may be given to the user showing how the assertion can be violated
+                * if no warning is given by for a property, it means that the property is safe
