@@ -42,6 +42,15 @@
     * understanding memory model of emv
     * introduction to smart contract
     * basics of Solidity programming
+* workshop task
+    * implement event ticketing smart contract
+        * `createTicket(qrCode)`
+            * `qrCode` is link to IPFS
+        * `buyTicket(ticketId)`
+        * `verifyTicket(ticketId)`
+            * assume that ticketId is derived from `qrCode` by other system 
+        * 
+    * implement tests
 
 ## memory model
 1. storage
