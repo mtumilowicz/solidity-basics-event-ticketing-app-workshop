@@ -42,6 +42,7 @@
     * understanding memory model of emv
     * introduction to smart contract
     * basics of Solidity programming
+    * introduction to Remix: https://remix.ethereum.org
 * workshop task
     * implement event ticketing smart contract
         * `createTicket(qrCode)`
@@ -49,7 +50,7 @@
         * `buyTicket(ticketId)`
         * `verifyTicket(ticketId)`
             * assume that ticketId is derived from `qrCode` by other system 
-        * 
+        * `getQRCode(ticketId)`
     * implement tests
 
 ## memory model
