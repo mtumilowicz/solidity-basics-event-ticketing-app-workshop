@@ -229,6 +229,18 @@
             * can typically only be used with functions that have external visibility
                 * source of these arguments needs to come from message calldata
                 * example: passing forward calldata arguments
+        * usually the signature of the function to be executed, followed by the ABI encoding of the function arguments
+            * can be verified in Remix, under smart contract method you can "Copy calldata to clipboard"
+            * example
+                * keccak256 online: https://emn178.github.io/online-tools/keccak_256.html
+                * function: `function createTicket(string)`
+                    * `6897082f779ee6aa6c305e01892e057838143a4691bda17d4092e228fc6d147a`
+                    * selector: `0x6897082f`
+                * argument: `c`
+                    * `0x63`
+                    * prepending the data length: `0x0163`
+                    * we need to zero-pad to a 32-byte word
+                * calldata: `concat(selector, packedPaddedArgument)`
         * temporary location where function arguments are stored
         * avoids unnecessary copies and ensures that the data is unaltered
         * helps lower gas consumption
