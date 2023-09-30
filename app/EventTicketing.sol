@@ -44,8 +44,8 @@ contract EventTicketing {
     }
 
     function buyTicket(uint256 ticketId) public payable ticketExists(ticketId) {
-        require(msg.value == ticketPrice, "Wrong ticket price,");
-        require(tickets[ticketId].purchased == false, "Already purchased");
+        require(msg.value == ticketPrice, "Wrong ticket price");
+        require(!(isPurchased(ticketId)), "Already purchased");
 
         tickets[ticketId].purchased = true;
 
@@ -54,21 +54,21 @@ contract EventTicketing {
 
     // getQRCode, get underlying ticketId value, verifyTicket
     function verifyTicket(uint256 ticketId) public onlyOrganizer ticketExists(ticketId) {
-        require(!tickets[ticketId].isUsed, "Ticket has already been used");
+        require(!isUsed(ticketId), "Ticket has already been used");
 
         tickets[ticketId].isUsed = true;
         emit TicketValidated(ticketId);
     }
 
-    function isPurchased(uint256 ticketId) public view ticketExists(ticketId) returns (bool) {
+    function getQRCode(uint256 ticketId) public view ticketExists(ticketId) returns (string memory) {
+        return tickets[ticketId].qrCode;
+    }
+
+    function isPurchased(uint256 ticketId) private view ticketExists(ticketId) returns (bool) {
         return tickets[ticketId].purchased;
     }
 
-    function isUsed(uint256 ticketId) public view ticketExists(ticketId) returns (bool) {
+    function isUsed(uint256 ticketId) private view ticketExists(ticketId) returns (bool) {
         return tickets[ticketId].isUsed;
-    }
-
-    function getQRCode(uint256 ticketId) public view ticketExists(ticketId) returns (string memory) {
-        return tickets[ticketId].qrCode;
     }
 }
