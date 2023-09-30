@@ -8,6 +8,8 @@
     * https://ethereum.stackexchange.com/questions/92965/how-are-gas-refunds-payed
     * https://ethereum.stackexchange.com/questions/125028/is-there-still-gas-refund-for-sstore-to-0-instructions
     * https://ethereum.stackexchange.com/questions/3/what-is-meant-by-the-term-gas
+    * https://ethereum.stackexchange.com/questions/117100/why-do-many-solidity-projects-prefer-importing-specific-names-over-whole-modules
+    * https://medium.com/@eiki1212/what-is-ethereum-gas-simple-explanation-2f0ae62ed69c
 
 # introduction
 ## EVM = Ethereum Virtual Machine
@@ -39,7 +41,10 @@
             * a unit of measurement for the amount of computational work required to execute operations
         * since the London hard fork, each block has a target size of 15 million units of gas
             * the actual size of a block will vary depending on network demand
-                * maximum size of the block gas limit is 30 million gas
+                * protocol achieves an equilibrium block size of 15 million on average through the process of tâtonnement
+                * if the block size is greater than the target block size, the protocol will increase the base fee for the following block
+                * the protocol will decrease the base fee if the block size is less than the target block size
+                * maximum size: 30 million gas (2x the target block size)
                     * means that a block can only contain transactions which cost 30m gas to execute
         * example
             * 3m gas is at maximum 1.5 million instructions (in a very theoretical, unrealistic scenario)
@@ -128,6 +133,8 @@
 * memory model maintains four locations to access and/or store information
     1. storage
         * permanent storage space
+            * stored on the blockchain
+        * where all state variables are stored
         * each contract account has its own storage and can only access their own storage
             * it is not possible to directly access the storage of another account
             * each Ethereum account has its own unique address and associated storage
@@ -161,7 +168,8 @@
                 web3.eth.getStorageAt("0x9168fBa74ADA0EB1DA81b8E9AeB88b083b42eBB4", 1)
                 // returns: `0x0000000000000000000000000000000000000000000000000000000000000005`
                 ```
-
+            * dynamic arrays and structs always occupy a new slot
+                * any variables following them will also be initialized to start a new storage slot
         * it is not cheap in terms of gas - so we need to optimize the use of storage
             ```
             contract storageExample {
@@ -188,18 +196,54 @@
             * example
                 * `address` -> `0x0000000000000000000000000000000000000000`
                 * enums -> assigned the first value (index 0)
+        * Solidity generates a getter function for public state variables
     1. memory
         * works similarly to the memory of a computer, more specifically, the RAM (Random Access Memory)
             * idea of RAM is that information can be read and stored in specific places
             (at a particular memory address) and not just sequentially
+        * short-lived
+            * reserved for variables that are defined within the scope of a function
+            * gets torn down when a function completes its execution
     1. stack
         * works on the LIFO (Last-In First-Out) scheme
         * when the bytecode starts executing, the Stack is empty
+        * 1,024 levels deep in the EVM
+            * if it stores anything more than this, it raises an exception
     1. calldata
         * it is a read-only location
-        * in principle, the calldata can be anything
-        * where call or transaction payload information is stored
-            * call payload is usually the signature of the function to be executed, followed by the ABI encoding of the function arguments
+            * example
+                ```
+                contract Storage {
+
+                    string[] messages;
+
+                    function retrieve(uint index) public view returns (string calldata){
+                        return messages[index]; // not compiling
+                    }
+                }
+                ```
+                * for it to work: need to copy string to the calldata area
+                    * impossible: calldata is immutable
+                * however: if you already have something in calldata though, you can return it
+                    * calldata can be returned from functions
+            * can typically only be used with functions that have external visibility
+                * source of these arguments needs to come from message calldata
+                * example: passing forward calldata arguments
+        * temporary location where function arguments are stored
+        * avoids unnecessary copies and ensures that the data is unaltered
+        * helps lower gas consumption
+            * compiler can skip ABI encoding
+                * the data is already formatted correctly according to the ABI
+                * for memory: Solidity would need to encode it before returning
+        * calldata is allocated by the caller, while memory is allocated by the callee
+    * assignments will either result in copies being created, or mere references to the same piece of data
+        * between storage and memory/calldata - always create a separate copy
+        * from memory to memory
+            * create a new copy for value types
+            * create references for reference types
+                * changing one memory variable alters all other memory variables that refer to the same data
+        * from storage to storage
+            * assign a reference
 
 ## gas
 * is a measure of computational work required to execute operations or transactions on the network
@@ -306,9 +350,6 @@
         * during busy times, like the holiday season, the delivery service may increase the standard delivery fee
             * increase will be set by the delivery company and will affect all customers equally
     * comparable to Bitcoin’s difficulty adjustment
-    * network capacity would be increased to 16 million gas, so that 50% utilization matches up with our current 8 million gas limit
-        * when the network is at >50% capacity, the BASEFEE increments up slightly and when capacity is at <50%, it decrements down slightly
-        * increments are constrained, the maximum difference in BASEFEE from block to block is predictable
     * oracles might run into issues under EIP-1559 during periods of high congestion
         * they need to provide the pricing information for nearly all of DeFi
         * might end up paying incredibly high fees in order to ensure the pricing information reaches the DeFi application in a timely manner
@@ -328,7 +369,7 @@
             * when demand for rides is higher, prices go up for everyone who wants a ride
         * problem: Ethereum network becomes busy
             * example
-                * many users are trying to play a hit game
+                * CryptoKitty users have reached in excess of 1.5 million(25% of total Ethereal traffic in peak times)
                 * trade on a new decentralized cryptocurrency exchange
             * result: users trying to push their transactions by paying absurdly high gas fees
                 * gas fees become unpredictable
@@ -381,14 +422,46 @@
             readers of online marketing content and ads
     * can operate autonomously without the need for intermediaries
 
+## syntax
+* example
+    ```
+    import 'CommonLibrary.sol';
 
+    pragma solidity ^0.8.9;
 
-
-
-
-
-
-
+    contract FirstContract { }
+    ```
+* `pragma`
+    * generally the first line of code within any Solidity file
+    * specifies the target compiler version
+    * `^`: contract will compile for any version above the version mentioned but less than the next major version
+        * example: `0.8.9` will not work with the `0.9.x` compiler version, but lesser than it
+    * good practice: compile Solidity code with an exact compiler version rather than using ^
+* `import`
+    * example
+        ```
+        import {
+            ERC721HolderUpgradeable // way to avoid naming conflicts
+        } from "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+        ```
+    * are for your development environment only
+        * when you deploy your contracts on the Ethereum blockchain, import statements must be replaced with the actual content of the `.sol` file that you imported
+        * Ethereum blockchain takes the flattened files of the smart contract and deploys it
+            * content of the imported contract is effectively copied and pasted into the current contract during the compilation process
+            * this means that all elements defined in the imported contract become part of the current contract
+        * framework, such as Truffle or the Remix IDE, converts all import statements and makes a single flattened contract during deployment
+* constructors
+    * are optional and the compiler induces a default constructor when none is explicitly defined
+    * executed once while deploying the contract
+    * can have a payable attribute
+        * enable it to accept Ether during deployment and contract instance creation time
+* two ways of creating a contract
+      * using the new keyword
+          * deploys and creates a new contract instance
+          * example: `HelloWorld myObj = new HelloWorld();`
+      * using the address of the already-deployed contract
+          * is used when a contract is already deployed and instantiated
+          * example: `HelloWorld myObj = HelloWorld(address);`
 
 # to use
 * Dynamic types are not that straightforward, because they can increase and decrease the amount of data they hold dynamically.
