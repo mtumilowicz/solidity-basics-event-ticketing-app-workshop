@@ -36,6 +36,8 @@
     * https://thekscar.medium.com/writing-solidity-unit-tests-for-testing-assert-require-and-revert-conditions-using-truffle-2e182d91a40f
     * https://medium.com/coinmonks/learn-solidity-lesson-26-error-handling-ccf350bc9374
     * https://ethereum.stackexchange.com/questions/131384/is-msg-sender-reliable-in-view-and-pure-functions
+    * https://www.alchemy.com/overviews/solidity-gas-optimization
+    * https://medium.com/coinmonks/ethereum-data-transaction-receipt-trie-and-logs-simplified-30e3ae8dc3cf
 
 ## preface
 * goals of this workshop
@@ -182,6 +184,31 @@
 ## smart contract
 * program (bytecode) deployed and executed in the Ethereum Virtual Machine (EVM)
 * stored on the Ethereum blockchain
+* stores information in blockchain in two distinct ways
+    * account storage
+        * contains any data that defines the smart contract state and that the contract can access
+    * logs
+        * store information that is not required by the contract but must be accessed by other off chain applications
+            * example: front-end, analytics etc
+        * much cheaper than account storage
+    * overview
+        ![alt text](img/block_organisation.webp)
+    * example: non fungible tokens
+        * account storage: token Ownership
+            * contract needs it to prove ownership and provide ownership transfer functionality
+        * logs
+            * token ownership history
+                * contract only needs to be aware of current token ownership
+                * tracking a token’s ownership history is interest to investors or decision makers
+            * UI notifications
+                * transactions are asynchronous, the smart contract cannot return value to the front end
+                * when the mint occurs, it could write it to the log
+                    * front end could then listen for notifications and display them to the user
+            * off chain triggers
+                * when you want to transfer your token to another blockchain
+                    * example: play a game built on a different blockchain
+                    * initiate a transfer to a common gateway, and the transaction will log the transfer
+                    * common gateway would then pick that information and mint a corresponding token in the other chain
 * written in a specific programming language
     * example: Solidity, Vyper
 * self-executing with the terms of the agreement written directly into code
@@ -585,12 +612,26 @@
                 emit Transfer(from, to, tokenId);
             }
             ```
-    * stored along with block data
+    * stored in a special data structure called the "logs bloom"
+        * compact representation of all events emitted in a block
+        * allows nodes to quickly check if a log is included in a block, without having to go through the full log data
+        * smart contracts cannot hear events on their own because
+            * contract data lives in the States trie
+            * event data is stored in the Transaction Receipts trie
+        * digression: bloom filters
+            * problem: we want to find out if a user exists in a given list
+            * naive solution: go through the list
+                * if a list contains thousands of users, it becomes prohibitively expensive and extremely slow
+            * probabilistic solution: hashing and mapping each user in the list
+                ![alt text](img/bloom_filter_construction.webp)
+                ![alt text](img/bloom_filter_search.webp)
+            * is a probabilistic data structure that can either say “probably present” or “definitely not present”
+            * is extremely useful, especially when you expect the majority of the answers to be DEFINITELY NOT
+        * EVM combines the logs bloom of each transaction and creates a logs bloom in the header
+            * assume we have to search for the same query (tokens sold by a specific user) but across many blocks
+                * instead of querying the bloom of every transaction in every block, we can simply query the bloom at the header
     * up to four indexed parameters (topics)
         * used to filter events when querying the blockchain
-        * stored in a special data structure called the "logs bloom"
-            * compact representation of all events emitted in a block
-            * allows nodes to quickly check if a log is included in a block, without having to go through the full log data
         * first topic is used to log the signature of the event
             * the first four bytes of the keccak256 hash of the event's signature
 * error handling
