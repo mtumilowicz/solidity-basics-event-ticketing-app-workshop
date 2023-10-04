@@ -1,4 +1,4 @@
-# solidity-basics-event-ticketing-app-workshop
+# solidity-basics-workshop
 
 * references
     * https://www.oreilly.com/library/view/hands-on-smart-contract/9781492045250/
