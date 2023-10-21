@@ -205,6 +205,9 @@
     * ode coverage tool specifically designed for Solidity smart contracts
 
 ## smart contract
+* example: https://etherscan.io/address/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+    * without verification there’s no way to guarantee it matches the code in the blockchain (and we tried a number of combinations)
+    * in general, code should be posted on Etherscan (not just Github)
 * program (bytecode) deployed and executed in the Ethereum Virtual Machine (EVM)
 * stored on the Ethereum blockchain
 * stores information in blockchain in two distinct ways
@@ -421,7 +424,7 @@
             * call
             * delegatecall
             * callcode
-            * described here: https://github.com/mtumilowicz/solidity-upgradable-contract-proxy-workshop
+            * described here: https://github.com/mtumilowicz/solidity-assembly-proxy-workshop
         * single property: balance
         * designed to hold account addresses in Ethereum
             * 160 bits or 20 bytes in size
