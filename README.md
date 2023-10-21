@@ -39,6 +39,8 @@
     * https://www.alchemy.com/overviews/solidity-gas-optimization
     * https://medium.com/coinmonks/ethereum-data-transaction-receipt-trie-and-logs-simplified-30e3ae8dc3cf
     * https://medium.com/cryptronics/ethereum-smart-contract-security-73b0ede73fa8
+    * https://medium.com/what-is-infura/what-is-infura-59dbdd778455
+    * https://ethereum.stackexchange.com/questions/6897/what-is-the-difference-between-truffle-and-remix
 
 ## preface
 * goals of this workshop
@@ -182,6 +184,26 @@
     * from storage to storage
         * assign a reference
 
+## tools
+* infura
+    * is a kind of node storage (cluster)
+    * set of tools that provides its services for integrating your application with the Ethereum network
+    * you do not need to run your local blockchain for the mainnet and testnets
+        * example: MetaMask internally uses an Infura link to connect to the Ethereum blockchain
+    * also host the Inter Planetary File System (IPFS) nodes and the IPFS public gateway
+* Truffle
+    * development environment/framework for smart contracts
+    * can be included in projects as a build dependency
+* Remix
+    * IDE in the browser
+* linters
+    * analyze the given source code and report programming errors, bugs, and stylistic errors
+    * two commonly used linter tools available
+        * solhint - provides security and style guideline-specific validations
+        * ethlint -  similar to solhint
+* solidity-coverage
+    * ode coverage tool specifically designed for Solidity smart contracts
+
 ## smart contract
 * program (bytecode) deployed and executed in the Ethereum Virtual Machine (EVM)
 * stored on the Ethereum blockchain
@@ -264,7 +286,7 @@
     * specifies the target compiler version
     * `^`: contract will compile for any version above the version mentioned but less than the next major version
         * example: `0.8.9` will not work with the `0.9.x` compiler version, but lesser than it
-    * good practice: compile Solidity code with an exact compiler version rather than using ^
+    * good practice: compile Solidity code with an exact compiler version rather than using `^`
 * `import`
     * example
         ```
