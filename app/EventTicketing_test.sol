@@ -27,19 +27,31 @@ contract EventTicketingTest {
         Assert.equal(qrCode, "QR_CODE_DATA", "QR code should match");
     }
 
+    /// #value: 1000000000000000
     function buyTicket() public payable {
         uint256 ticketId = eventTicketing.createTicket("QR_CODE_DATA");
-        eventTicketing.buyTicket{value: ticketPrice, gas: 1000000}(ticketId);
+        eventTicketing.buyTicket{value: ticketPrice}(ticketId);
         bool purchased = eventTicketing.isPurchased(ticketId);
         Assert.equal(purchased, true, "Ticket should be purchased");
     }
 
-    function verifyTicket() public payable {
+    /// #value: 1000000000000000
+    function validateTicket() public payable {
         uint256 ticketId = eventTicketing.createTicket("QR_CODE_DATA");
         eventTicketing.buyTicket{value: ticketPrice}(ticketId);
-        eventTicketing.verifyTicket(ticketId);
+        eventTicketing.validateTicket(ticketId);
         bool isUsed = eventTicketing.isUsed(ticketId);
         Assert.equal(isUsed, true, "Ticket should be marked as used");
+    }
+
+    function validateNonExistingTicket() public payable {
+        try eventTicketing.validateTicket(10) {
+            Assert.ok(false, 'method execution should fail');
+        } catch Error(string memory reason) {
+            Assert.equal(reason, 'Invalid ticket ID', 'failed with unexpected reason');
+        } catch (bytes memory /*lowLevelData*/) {
+            Assert.ok(false, 'failed unexpected');
+        }
     }
 
     function getQRCode() public {

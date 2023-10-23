@@ -52,8 +52,8 @@ contract EventTicketing {
         emit TicketPurchased(ticketId, msg.sender);
     }
 
-    // getQRCode, get underlying ticketId value, verifyTicket
-    function verifyTicket(uint256 ticketId) public onlyOrganizer ticketExists(ticketId) {
+    // getQRCode, get underlying ticketId value, validateTicket
+    function validateTicket(uint256 ticketId) public onlyOrganizer ticketExists(ticketId) {
         require(!isUsed(ticketId), "Ticket has already been used");
 
         tickets[ticketId].isUsed = true;
@@ -64,11 +64,11 @@ contract EventTicketing {
         return tickets[ticketId].qrCode;
     }
 
-    function isPurchased(uint256 ticketId) private view ticketExists(ticketId) returns (bool) {
+    function isPurchased(uint256 ticketId) public view ticketExists(ticketId) returns (bool) {
         return tickets[ticketId].purchased;
     }
 
-    function isUsed(uint256 ticketId) private view ticketExists(ticketId) returns (bool) {
+    function isUsed(uint256 ticketId) public view ticketExists(ticketId) returns (bool) {
         return tickets[ticketId].isUsed;
     }
 }
