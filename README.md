@@ -41,6 +41,7 @@
     * https://medium.com/cryptronics/ethereum-smart-contract-security-73b0ede73fa8
     * https://medium.com/what-is-infura/what-is-infura-59dbdd778455
     * https://ethereum.stackexchange.com/questions/6897/what-is-the-difference-between-truffle-and-remix
+    * https://remix-ide.readthedocs.io/en/latest/unittesting.html#customization
 
 ## preface
 * goals of this workshop
@@ -57,6 +58,34 @@
             * assume that ticketId is derived from `qrCode` by other system 
         * `getQRCode(ticketId)`
     * implement tests in solidity
+        * providing ethers to test
+            ```
+            /// #value: 10
+            function test() public payable { 
+                Assert.equal(msg.value, 10, ...);
+            }
+            ```
+        * defining sender for the test
+            ```
+            import "remix_accounts.sol"; // must be imported in your test file to use custom sender
+          
+            /// #sender: account-0
+            function test() public payable {
+              Assert.equal(msg.sender, TestsAccounts.getAccount(0), ...);
+            }
+            ```
+        * check for exceptions
+            ```
+            function test() public {
+              try methodToTest {
+                Assert.ok(false, 'method execution should fail');
+              } catch Error(string memory reason) {
+                Assert.equal(reason, 'expected reason', 'failed with unexpected reason');
+              } catch (bytes memory /*lowLevelData*/) {
+                Assert.ok(false, 'failed unexpected');
+              }
+            }
+            ```
 
 ## memory model
 1. storage
